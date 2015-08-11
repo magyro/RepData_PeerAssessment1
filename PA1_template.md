@@ -1,15 +1,18 @@
+
 ---
-title: "Reproducible Research - Peer Assessment Project No. 1"
+title: "Reproducible Research: Peer Assessment 1"
 output: 
   html_document:
     keep_md: true
-    
+
 ---
 
 
 ```r
 rm(list=ls())
 options(stringsAsFactors = FALSE)
+options(digits=2)
+
 Sys.setlocale("LC_TIME", "English")
 ```
 
@@ -22,187 +25,120 @@ if (!is.element("ggplot2",installed.packages()) ) {install.packages("ggplot2")}
 library(ggplot2)
 ```
 
-
-##      Loading and Preprocessing the Data
+## Loading and preprocessing the data
 
 
 ```r
-if (!file.exists("activity.csv")) {unzip("activity.zip")}
-
-dataAct<-read.csv("activity.csv")
+if (!file.exists("activity.csv")) {unzip("repdata_data_activity.zip")}
+dataAct <- read.csv("activity.csv")
 ```
 
+## What is mean total number of steps taken per day?
 
-##      Mean Total Number of Steps Taken Per Day
 
 ```r
+##      The total number of steps taken per day
+
 dailyData <-data.frame(date=character(length(levels(as.factor( dataAct$date)))))
 dailyData$date<-unique(dataAct$date)
 dailyData$tot<-tapply(dataAct$steps,dataAct$date,sum,na.rm=TRUE)
 
-##      Histogram of the total number of steps taken per day
-q<- qplot(dailyData$tot,col="red")
+##      Histogram of the total number of steps taken each day
+
+#png(file="stepsPerDay.png", width = 480, height = 480)
+q <- qplot(dailyData$tot, xlab="Total Number of Steps")
 print(q)
 ```
 
 ![plot of chunk Mean per Day](figure/Mean per Day-1.png) 
 
 ```r
+#dev.off()
+
 ##      The mean and median of the total number of steps taken per day     
 
-dailyData$mean<-tapply(dataAct$steps,dataAct$date,mean,na.rm=TRUE)
-dailyData$median<-tapply(dataAct$steps,dataAct$date,median)
-```
-The mean of the number of steps taken per day  is
-  
-The median of the number of steps taken per day  is 
-  
+dailyDataMean<-mean(dailyData$tot)
 
-## The Average Daily Activity Pattern
+dailyDataMedian<-median(dailyData$tot)
+```
+The mean of the number of steps taken per day is 
+9354.23  
+The median of the number of steps taken per day is 
+10395  
+
+## What is the average daily activity pattern?
+
 
 ```r
-##    compute the plot
-##
+##    plot of the 5-minute interval (x-axis) 
+##    and the average number of steps taken, averaged across all days (y-axis)
 
 avInterval<-tapply(dataAct$steps,as.factor(dataAct$interval),mean,na.rm=TRUE)
-
-
 tmp<-cbind(levels(factor(dataAct$interval)),avInterval)
-plot (tmp[,1],tmp[,2],type="l",main="Daily Average no.of Steps per Time Interval",
-      ylab="Av. no. of Steps",xlab="Time Interval")
+
+#png(file="dailyAverageSteps.png", width = 480, height = 480)
+p<-plot (tmp[,1],tmp[,2],type="l",
+         main="Daily Average No. of Steps per Time Interval",
+         ylab="Av. no. of Steps",xlab="Time Interval")
 ```
 
-![plot of chunk Daily Activity Pattern](figure/Daily Activity Pattern-1.png) 
+![plot of chunk Average Daily](figure/Average Daily-1.png) 
 
 ```r
-##      Which 5-minute interval, on average across all the days in the dataset, 
-##      contains the maximum number of steps?
-
+#print (p)
+#dev.off()
 maxNoSteps<-max(as.numeric(tmp[,2]))
 intervalofMax<-tmp[match(maxNoSteps,tmp[,2]),1]
-intervalofMax
 ```
+The 5-minute interval, on average across all the days in the dataset, containning the maximum number of steps is 835  
 
-```
-## [1] "835"
-```
-
-The time of day of the interval with maximum avergae steps is 835  
-
-## Calculate and Report the Total Number of Missing Values in the Dataset
+## Imputing missing values 
 
 
 ```r
-naVec<-apply(as.matrix(dataAct), 2, function(x) sum(is.na(x)))
-naVec[1]
-```
-
-```
-## steps 
-##  2304
+naNum <- sum(!complete.cases(dataAct))
 ```
 total number of missing cases is 2304  
 
-The strategy of replacing NA's is to use the average for that day, unless all  
-the values of the day are NA,s. Than it is replaced by 0.
+Filling the missing values in the dataset is performed based on the average for that day, unless all the values of the day are NA's, than it is replaced by zero.
+
 
 ```r
-##      Filling in all of the missing values in the dataset.
-##      Using the average for that day, 
-##      replicate the data into clean data frame
+##      replicate the data into a clean data frame
 cleanDataAct<-dataAct
-#cleanDataAct$date<-as.factor(cleanDataAct$date)
 
-##      Calculate daily average
-##      
+##      Calculate daily average per interval
 dailyData$av <- tapply(dataAct$steps,as.factor(dataAct$date),mean,na.rm=TRUE)
-##      if the average column contains NA's it is because the input to the mean function us all NA's.
+##      if the average column contains NA's it is because the input to 
+##      the mean function is all NA's.
 ##      In that case it should be 0 as the total function
 dailyData$av[is.na(dailyData$av)]<-0
 
 ##      Calculate the indices of NA values in steps vector
-
 naInd<-which(is.na(cleanDataAct$steps))
-a<-cleanDataAct$date[naInd]
 cleanDataAct$steps[naInd]<-dailyData$av[cleanDataAct$date[naInd]]
 
-
-##     Make a histogram of the total number of steps taken each day and
-##     __________________________________________________________________
-##     
-dailyData$totClean<-tapply(cleanDataAct$steps,cleanDataAct$date,sum)
-q<-qplot(dailyData$totClean,fill="red")
-print(q)
+##     Plot a histogram of the total number of steps taken each day
+dailyData$totClean<-tapply(cleanDataAct$steps,as.factor(cleanDataAct$date),sum)
+#png(file="totalNoOfSteps.png", width = 480, height = 480)
+r<- qplot (dailyData$totClean, xlab="Total Number of Daily Steps",
+           binwidth = 2200, fill=I("red"))
+print(r)
 ```
 
-![plot of chunk Filling missing values](figure/Filling missing values-1.png) 
+![plot of chunk Filling of  missing values](figure/Filling of  missing values-1.png) 
 
 ```r
+#dev.off()
+
 ##     The mean and median total number of steps taken per day
-##     __________________________________________________________
 
-dailyData$meanClean<-tapply(cleanDataAct$steps,cleanDataAct$date,mean)
-dailyData$medianClean<-tapply(cleanDataAct$steps,cleanDataAct$date,median)
-
-print(dailyData$meanClean)
+dailyDataMeanClean<-mean(dailyData$totClean)
+dailyDataMedianClean<-median(dailyData$totClean)
 ```
 
-```
-## 01/10/2012 01/11/2012 02/10/2012 02/11/2012 03/10/2012 03/11/2012 
-##  0.0000000  0.0000000  0.4375000 36.8055556 39.4166667 36.7048611 
-## 04/10/2012 04/11/2012 05/10/2012 05/11/2012 06/10/2012 06/11/2012 
-## 42.0694444  0.0000000 46.1597222 36.2465278 53.5416667 28.9375000 
-## 07/10/2012 07/11/2012 08/10/2012 08/11/2012 09/10/2012 09/11/2012 
-## 38.2465278 44.7326389  0.0000000 11.1770833 44.4826389  0.0000000 
-## 10/10/2012 10/11/2012 11/10/2012 11/11/2012 12/10/2012 12/11/2012 
-## 34.3750000  0.0000000 35.7777778 43.7777778 60.3541667 37.3784722 
-## 13/10/2012 13/11/2012 14/10/2012 14/11/2012 15/10/2012 15/11/2012 
-## 43.1458333 25.4722222 52.4236111  0.0000000 35.2048611  0.1423611 
-## 16/10/2012 16/11/2012 17/10/2012 17/11/2012 18/10/2012 18/11/2012 
-## 52.3750000 18.8923611 46.7083333 49.7881944 34.9166667 52.4652778 
-## 19/10/2012 19/11/2012 20/10/2012 20/11/2012 21/10/2012 21/11/2012 
-## 41.0729167 30.6979167 36.0937500 15.5277778 30.6284722 44.3993056 
-## 22/10/2012 22/11/2012 23/10/2012 23/11/2012 24/10/2012 24/11/2012 
-## 46.7361111 70.9270833 30.9652778 73.5902778 29.0104167 50.2708333 
-## 25/10/2012 25/11/2012 26/10/2012 26/11/2012 27/10/2012 27/11/2012 
-##  8.6527778 41.0902778 23.5347222 38.7569444 35.1354167 47.3819444 
-## 28/10/2012 28/11/2012 29/10/2012 29/11/2012 30/10/2012 30/11/2012 
-## 39.7847222 35.3576389 17.4236111 24.4687500 34.0937500  0.0000000 
-## 31/10/2012 
-## 53.5208333
-```
-
-```r
-print(dailyData$medianClean)
-```
-
-```
-## 01/10/2012 01/11/2012 02/10/2012 02/11/2012 03/10/2012 03/11/2012 
-##          0          0          0          0          0          0 
-## 04/10/2012 04/11/2012 05/10/2012 05/11/2012 06/10/2012 06/11/2012 
-##          0          0          0          0          0          0 
-## 07/10/2012 07/11/2012 08/10/2012 08/11/2012 09/10/2012 09/11/2012 
-##          0          0          0          0          0          0 
-## 10/10/2012 10/11/2012 11/10/2012 11/11/2012 12/10/2012 12/11/2012 
-##          0          0          0          0          0          0 
-## 13/10/2012 13/11/2012 14/10/2012 14/11/2012 15/10/2012 15/11/2012 
-##          0          0          0          0          0          0 
-## 16/10/2012 16/11/2012 17/10/2012 17/11/2012 18/10/2012 18/11/2012 
-##          0          0          0          0          0          0 
-## 19/10/2012 19/11/2012 20/10/2012 20/11/2012 21/10/2012 21/11/2012 
-##          0          0          0          0          0          0 
-## 22/10/2012 22/11/2012 23/10/2012 23/11/2012 24/10/2012 24/11/2012 
-##          0          0          0          0          0          0 
-## 25/10/2012 25/11/2012 26/10/2012 26/11/2012 27/10/2012 27/11/2012 
-##          0          0          0          0          0          0 
-## 28/10/2012 28/11/2012 29/10/2012 29/11/2012 30/10/2012 30/11/2012 
-##          0          0          0          0          0          0 
-## 31/10/2012 
-##          0
-```
-
-The mean of the clean data is 0, 0, 0.4375, 36.8055556, 39.4166667, 36.7048611, 42.0694444, 0, 46.1597222, 36.2465278, 53.5416667, 28.9375, 38.2465278, 44.7326389, 0, 11.1770833, 44.4826389, 0, 34.375, 0, 35.7777778, 43.7777778, 60.3541667, 37.3784722, 43.1458333, 25.4722222, 52.4236111, 0, 35.2048611, 0.1423611, 52.375, 18.8923611, 46.7083333, 49.7881944, 34.9166667, 52.4652778, 41.0729167, 30.6979167, 36.09375, 15.5277778, 30.6284722, 44.3993056, 46.7361111, 70.9270833, 30.9652778, 73.5902778, 29.0104167, 50.2708333, 8.6527778, 41.0902778, 23.5347222, 38.7569444, 35.1354167, 47.3819444, 39.7847222, 35.3576389, 17.4236111, 24.46875, 34.09375, 0, 53.5208333  
-The median of the clean data is 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 
+The mean of the clean data is 9354.23  
+The median of the clean data is 1.04 &times; 10<sup>4</sup>     
 
 
 ```r
@@ -210,157 +146,73 @@ The median of the clean data is 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 ##     assignment? 
 ##     ______________________________________________________________________
 
-dailyData$meanDIff<- dailyData$meanClean - dailyData$mean
-dailyData$medianDiff<- dailyData$medianClean - dailyData$median
+dailyDataMeanDIff<- dailyDataMeanClean - dailyDataMean
+dailyDataMedianDiff<- dailyDataMedianClean - dailyDataMedian
+```
+The difference of the mean without NA's is 0   
+The difference of the median without NA's is 0
 
-print(dailyData$meanDIff)
-```
 
-```
-## 01/10/2012 01/11/2012 02/10/2012 02/11/2012 03/10/2012 03/11/2012 
-##        NaN        NaN          0          0          0          0 
-## 04/10/2012 04/11/2012 05/10/2012 05/11/2012 06/10/2012 06/11/2012 
-##          0        NaN          0          0          0          0 
-## 07/10/2012 07/11/2012 08/10/2012 08/11/2012 09/10/2012 09/11/2012 
-##          0          0        NaN          0          0        NaN 
-## 10/10/2012 10/11/2012 11/10/2012 11/11/2012 12/10/2012 12/11/2012 
-##          0        NaN          0          0          0          0 
-## 13/10/2012 13/11/2012 14/10/2012 14/11/2012 15/10/2012 15/11/2012 
-##          0          0          0        NaN          0          0 
-## 16/10/2012 16/11/2012 17/10/2012 17/11/2012 18/10/2012 18/11/2012 
-##          0          0          0          0          0          0 
-## 19/10/2012 19/11/2012 20/10/2012 20/11/2012 21/10/2012 21/11/2012 
-##          0          0          0          0          0          0 
-## 22/10/2012 22/11/2012 23/10/2012 23/11/2012 24/10/2012 24/11/2012 
-##          0          0          0          0          0          0 
-## 25/10/2012 25/11/2012 26/10/2012 26/11/2012 27/10/2012 27/11/2012 
-##          0          0          0          0          0          0 
-## 28/10/2012 28/11/2012 29/10/2012 29/11/2012 30/10/2012 30/11/2012 
-##          0          0          0          0          0        NaN 
-## 31/10/2012 
-##          0
-```
 
 ```r
-print(dailyData$medianDiff)
-```
-
-```
-## 01/10/2012 01/11/2012 02/10/2012 02/11/2012 03/10/2012 03/11/2012 
-##         NA         NA          0          0          0          0 
-## 04/10/2012 04/11/2012 05/10/2012 05/11/2012 06/10/2012 06/11/2012 
-##          0         NA          0          0          0          0 
-## 07/10/2012 07/11/2012 08/10/2012 08/11/2012 09/10/2012 09/11/2012 
-##          0          0         NA          0          0         NA 
-## 10/10/2012 10/11/2012 11/10/2012 11/11/2012 12/10/2012 12/11/2012 
-##          0         NA          0          0          0          0 
-## 13/10/2012 13/11/2012 14/10/2012 14/11/2012 15/10/2012 15/11/2012 
-##          0          0          0         NA          0          0 
-## 16/10/2012 16/11/2012 17/10/2012 17/11/2012 18/10/2012 18/11/2012 
-##          0          0          0          0          0          0 
-## 19/10/2012 19/11/2012 20/10/2012 20/11/2012 21/10/2012 21/11/2012 
-##          0          0          0          0          0          0 
-## 22/10/2012 22/11/2012 23/10/2012 23/11/2012 24/10/2012 24/11/2012 
-##          0          0          0          0          0          0 
-## 25/10/2012 25/11/2012 26/10/2012 26/11/2012 27/10/2012 27/11/2012 
-##          0          0          0          0          0          0 
-## 28/10/2012 28/11/2012 29/10/2012 29/11/2012 30/10/2012 30/11/2012 
-##          0          0          0          0          0         NA 
-## 31/10/2012 
-##          0
-```
-The difference of the mean without NA's is NaN, NaN, 0, 0, 0, 0, 0, NaN, 0, 0, 0, 0, 0, 0, NaN, 0, 0, NaN, 0, NaN, 0, 0, 0, 0, 0, 0, 0, NaN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NaN, 0   
-The difference of the median without NA's is 
-
-```r
-##     What is the impact of inputing missing data on the 
+##     What is the impact of imputing missing data on the 
 ##     estimates of the total daily number of steps? 
-## 
-dailyData$totDIff<- dailyData$totClean - dailyData$tot
-print(dailyData$totDIff)
+dailyDataTotDIff<- sum(dailyData$totClean) - sum(dailyData$tot)
 ```
+The impact of inputing missing data on the total daily estimates, by the method of using daily average when exists and 0 when missing for that day,  is 
+0
 
-```
-## 01/10/2012 01/11/2012 02/10/2012 02/11/2012 03/10/2012 03/11/2012 
-##          0          0          0          0          0          0 
-## 04/10/2012 04/11/2012 05/10/2012 05/11/2012 06/10/2012 06/11/2012 
-##          0          0          0          0          0          0 
-## 07/10/2012 07/11/2012 08/10/2012 08/11/2012 09/10/2012 09/11/2012 
-##          0          0          0          0          0          0 
-## 10/10/2012 10/11/2012 11/10/2012 11/11/2012 12/10/2012 12/11/2012 
-##          0          0          0          0          0          0 
-## 13/10/2012 13/11/2012 14/10/2012 14/11/2012 15/10/2012 15/11/2012 
-##          0          0          0          0          0          0 
-## 16/10/2012 16/11/2012 17/10/2012 17/11/2012 18/10/2012 18/11/2012 
-##          0          0          0          0          0          0 
-## 19/10/2012 19/11/2012 20/10/2012 20/11/2012 21/10/2012 21/11/2012 
-##          0          0          0          0          0          0 
-## 22/10/2012 22/11/2012 23/10/2012 23/11/2012 24/10/2012 24/11/2012 
-##          0          0          0          0          0          0 
-## 25/10/2012 25/11/2012 26/10/2012 26/11/2012 27/10/2012 27/11/2012 
-##          0          0          0          0          0          0 
-## 28/10/2012 28/11/2012 29/10/2012 29/11/2012 30/10/2012 30/11/2012 
-##          0          0          0          0          0          0 
-## 31/10/2012 
-##          0
-```
-The impact of inputing missing data on the total daiky estimates is   
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
-## Differences in Activity Patterns Between Weekdays and Weekends  
+
+
+## Are there differences in activity patterns between weekdays and weekends?
 
 
 ```r
 ##      Create a new factor variable in the dataset with two levels
 ##       – “weekday” and “weekend” indicating whether a given date is a weekday
 ##        or weekend day.
-##________________________________________________________________
-##
-
-wkedays<-c("Sat","Sun")
-cleanDataAct$dayType<-
-        match(weekdays(as.Date(cleanDataAct$date,
-                        format = "%d/%m/%Y"),abbreviate=TRUE),wkedays,nomatch = 3)
-
-cleanDataAct$dayType<-as.character(cleanDataAct$dayType)
-cleanDataAct$dayType<-gsub("1","weekend",cleanDataAct$dayType,fixed = TRUE)
-cleanDataAct$dayType<-gsub("2","weekend",cleanDataAct$dayType,fixed = TRUE)
-cleanDataAct$dayType<-gsub("3","weekday",cleanDataAct$dayType,fixed = TRUE)
-cleanDataAct$dayType<-as.factor(cleanDataAct$dayType)
-
-levels(cleanDataAct$dayType)
+wkedays<-c("Saturday","Sunday")
+cleanDataAct$dayType<-"weekday"
+wkeDaysInd<-
+       weekdays(as.Date(cleanDataAct$date)) %in% wkedays
+cleanDataAct$dayType[wkeDaysInd]<-"weekend"
+cleanDataAct$dayType <- as.factor(cleanDataAct$dayType)
+l<-levels(cleanDataAct$dayType)
 ```
+New factor variable in the dataset with two levels: weekday, weekend
 
-```
-## [1] "weekday" "weekend"
-```
 
 ```r
 ## Make a panel plot containing a time series plot (i.e. type = "l") 
 ## of the 5-minute interval (x-axis) and the average number of steps taken, 
 ## averaged across all weekday days or weekend days (y-axis).
-## ____________________________________________________________________________ 
-## See the README file in the GitHub repository to see an example of what this plot
-##  should look like using simulated data.
 
-#prepare dataframe cleanAV for plotting use auxiliary cleanAve
+
+#prepare dataframe cleanAV for plotting 
+#
+## first cleanAv has the average number of steps taken, 
+## averaged across all weekday days 
+## and cleanAve has the average number of steps taken, 
+## averaged across  all weekend days.
+## Than they are combined in cleanAv
+#
 cleanAv<-data.frame(interval=integer
                     (length(levels(as.factor( cleanDataAct$interval)))))
 cleanAv$interval<-levels(factor(cleanDataAct$interval))
 cleanAv$wType<-as.factor("weekday")
 cleanAve<-data.frame(interval=integer
-                    (length(levels(as.factor( cleanDataAct$interval)))))
+                     (length(levels(as.factor( cleanDataAct$interval)))))
 cleanAve$interval<-levels(factor(cleanDataAct$interval))
 cleanAve$wType<-as.factor("weekend")
 
 #prepare weekday data for ploting in cleanAv dataframe
 df<-data.frame(wSteps=
-       numeric(length(which(cleanDataAct$dayType == "weekday"))))
+                       numeric(length(which(cleanDataAct$dayType == "weekday"))))
 df$wSteps<-cleanDataAct$steps[which(cleanDataAct$dayType=="weekday")]
 df$wInterval<-cleanDataAct$interval[which(cleanDataAct$dayType=="weekday")]
 
 cleanAv$av<-tapply(df$wSteps,as.factor(df$wInterval),mean,na.rm=TRUE)
-
 
 #prepare weekend data for ploting in auxiliary
 de<-data.frame(wSteps=
@@ -374,13 +226,21 @@ cleanAv<-rbind(cleanAv, cleanAve)
 
 
 # plot
-# 
+#png(file="difWeekdaysWeekends.png", width = 480, height = 480)
+#par(mar = c(4, 4, 4, 4)) 
 
-
-q<-qplot(interval, av, data=cleanAv, geom = "density" , color="red",fill="green",
-      facets = wType~.,binwidth = 2, xlab="Interval", ylab="Number of Steps")
-
-print(q)      
+f<-ggplot(cleanAv,aes(interval, av ))
+f<-f+geom_line(aes(group=wType, color = wType))
+        
+f<-f+facet_grid(wType~.)
+f<-f+labs(y="Number of Steps")
+      
+print (f)
 ```
 
-![plot of chunk difference of Activit of weekend and weekdays](figure/difference of Activit of weekend and weekdays-1.png) 
+![plot of chunk difference wkdays and wkends 2](figure/difference wkdays and wkends 2-1.png) 
+
+```r
+#dev.off()
+```
+
