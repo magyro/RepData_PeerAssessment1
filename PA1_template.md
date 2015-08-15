@@ -223,6 +223,7 @@ de$wInterval<-cleanDataAct$interval[which(cleanDataAct$dayType=="weekend")]
 cleanAve$av<-tapply(de$wSteps,as.factor(de$wInterval),mean,na.rm=TRUE)
 
 cleanAv<-rbind(cleanAv, cleanAve)
+cleanAv$interval<-as.numeric(cleanAv$interval)
 
 
 # plot
